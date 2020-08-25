@@ -2,3 +2,8 @@ name = "Joint"
 uuid = "5412a505-d003-461f-8587-a6d4f90c54cb"
 authors = ["Benjamin Setterholm <bensett@umich.edu>"]
 version = "0.1.0"
+
+[deps]
+Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
+OIFITS = "53eb397e-dec1-5dcf-8dc9-2db916067267"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
