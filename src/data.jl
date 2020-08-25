@@ -118,6 +118,8 @@ function load(files::Vector{T}) where T<:AbstractString
 end
 
 function loaddir(dir::T) where T<:AbstractString
-    files = dir .* filter(x -> occursin(".fits", x), readdir(dir))
+    fits = dir .* filter(x -> occursin(".fits", x), readdir(dir))
+    oifits = dir .* filter(x -> occursin(".oifits", x), readdir(dir))
+    files = vcat(fits, oifits)
     return load(files)
 end
