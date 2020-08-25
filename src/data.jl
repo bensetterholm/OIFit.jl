@@ -96,3 +96,28 @@ function +(a::Vis2, b::Vis2)
         return ret[1]
     end
 end
+
+function load(file::T) where T<:AbstractString
+    f = OIFITS.load(file)
+    db = OIFITS.select(f, "OI_VIS2")
+
+    if length(db) ≠ 1
+        error("Currently, only a single Vis2 table per oifits file is supported")
+    end
+
+    λ = db[1].ins[:eff_wave] .± (0.5 .* db[1].ins[:eff_band])
+    data = db[1][:vis2data] .± db[1][:vis2err]
+    u = db[1][:ucoord]
+    v = db[1][:vcoord]
+
+    return [Vis2(λ[i], data[i,:], u, v) |> purge for i in 1:length(λ)]
+end
+
+function load(files::Vector{T}) where T<:AbstractString
+    return merge(vcat(load.(files)...))
+end
+
+function loaddir(dir::T) where T<:AbstractString
+    files = dir .* filter(x -> occursin(".fits", x), readdir(dir))
+    return load(files)
+end
