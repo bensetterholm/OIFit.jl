@@ -1,0 +1,3 @@
+module Joint
+
+end # module
