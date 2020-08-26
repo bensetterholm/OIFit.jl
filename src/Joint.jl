@@ -11,5 +11,6 @@ using Statistics
 
 include("data.jl")
 include("model.jl")
+include("fit.jl")
 
 end # module
