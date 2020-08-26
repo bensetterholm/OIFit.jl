@@ -123,3 +123,24 @@ function loaddir(dir::T) where T<:AbstractString
     files = vcat(fits, oifits)
     return load(files)
 end
+
+function uv(meas::Vis2)
+    return (1/meas.λ.val) .* hcat(meas.u, meas.v)'
+end
+
+"""
+    baseline(uv, inc=0, pa=0)
+
+Converts a 2×n array of (u, v) points, or a Vis2 object, in into a baseline separation. If
+inclination and position angle parameters are passed, the function computes the effective
+baseline for a source stretched and rotated by that amount on the sky.
+"""
+function baseline(uv_arr::Array{Float64,2}, inc=0.0, pa=0.0)
+    upvp = [
+        (cosd(pa)*cosd(inc)) (-sind(pa)*cosd(inc))
+        (sind(pa))           (cosd(pa))           
+    ] * uv_arr
+    return hypot.(upvp[1,:], upvp[2,:])
+end
+
+baseline(meas::Vis2, inc=0.0, pa=0.0) = baseline(uv(meas), inc, pa)
