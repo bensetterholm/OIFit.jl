@@ -144,3 +144,12 @@ function baseline(uv_arr::Array{Float64,2}, inc=0.0, pa=0.0)
 end
 
 baseline(meas::Vis2, inc=0.0, pa=0.0) = baseline(uv(meas), inc, pa)
+
+function setminerror(vis2, percent=5.0)
+    for i in eachindex(vis2.data)
+        err = vis2.data[i].val * percent / 100.
+        if err > vis2.data[i].err
+            vis2.data[i] = vis2.data[i].val ± err
+        end
+    end
+end
