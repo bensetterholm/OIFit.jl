@@ -1,4 +1,4 @@
-module Joint
+module OIFit
 
 export +, ==, length, Vis2
 export annulus, disk, gauss, pseudolorentzian

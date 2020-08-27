@@ -1,14 +1,13 @@
-# Joint.jl
+# OIFit.jl
 
-Julia Optical INterferometry Toolkit (Joint) is a library for fitting geometrical models to
-oifits data.
+A simple library for fitting geometrical models to oifits data.
 
 ## Usage
 
 ```julia
-using Joint
+using OIFit
 
-Joint.loaddir("path/to/dir") # Loads all .[oi]fits files into Vis2 structures
+OIFit.loaddir("path/to/dir") # Loads all .[oi]fits files into Vis2 structures
 ```
 
 ## License
