@@ -45,15 +45,15 @@ function fit(
     parinfo = nothing,
     config = nothing,
 )
-    uv = extract_uv(vis2)
-    guessParam = [10., 10., 3., 0.5, 0.5]
+    _uv = uv(vis2)
+    guessParam = [45., 131.3, 3., 0.5, 0.5]
     parinfo = CMPFit.Parinfo(5)
     parinfo[4].limited = (1, 1)
     parinfo[4].limits = (0, 1) # disk model flux
     parinfo[5].limited = (1, 1)
     parinfo[5].limits = (0, 1) # point source flux
     function cmpfit_callback(param::Vector{Float64})
-        resid = (Measurements.value.(vis2.data) - model(uv, param...).^2) ./
+        resid = (Measurements.value.(vis2.data) - model(_uv, param...).^2) ./
             Measurements.uncertainty.(vis2.data)
         return statistic(resid)
     end
@@ -74,8 +74,8 @@ function fit(
     for i in eachindex(lengths)
         splits[i+1] = splits[i] + lengths[i]
     end
-    uv = extract_uv.(vis2)
-    guessParam = [10., 10., fill(0.5, 3*len)...]
+    _uv = uv.(vis2)
+    guessParam = [45., 131.3, fill(0.5, 3*len)...]
     parinfo = CMPFit.Parinfo(length(guessParam))
     for i in 0:len-1
         guessParam[3+(3*i)] = 3.0
@@ -87,7 +87,7 @@ function fit(
     function cmpfit_callback(param::Vector{Float64})
         resid = vcat([(
             Measurement.value.(vis2[i].data) -
-            model(uv[i], param[1], param[2], param[3*i], param[3*i+1], param[3*i+2]).^2
+            model(_uv[i], param[1], param[2], param[3*i], param[3*i+1], param[3*i+2]).^2
         ) ./ Measurement.uncertainty.(vis2[i].data) for i in 1:len]...)
         return statistic(resid)
     end
@@ -114,7 +114,7 @@ function sizefit(
     for i in eachindex(lengths)
         splits[i+1] = splits[i] + lengths[i]
     end
-    uv = extract_uv.(vis2)
+    _uv = uv.(vis2)
     guessParam = [10., 10., 3.0, fill(0.5, 2*len)...]
     parinfo = CMPFit.Parinfo(length(guessParam))
     for i in 0:len-1
@@ -126,7 +126,7 @@ function sizefit(
     function cmpfit_callback(param::Vector{Float64})
         resid = vcat([(
             Measurements.value.(vis2[i].data) -
-            model(uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
+            model(_uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
         ) ./ Measurements.uncertainty.(vis2[i].data) for i in 1:len]...)
         return statistic(resid)
     end
@@ -148,11 +148,11 @@ function randfit(
     for i in eachindex(lengths)
         splits[i+1] = splits[i] + lengths[i]
     end
-    uv = extract_uv.(vis2)
+    _uv = uv.(vis2)
     function cmpfit_callback(param::Vector{Float64})
         resid = vcat([(
             Measurements.value.(vis2[i].data) -
-            model(uv[i], param[1], param[2], param[3*i], param[3*i+1], param[3*i+2]).^2
+            model(_uv[i], param[1], param[2], param[3*i], param[3*i+1], param[3*i+2]).^2
         ) ./ Measurements.uncertainty.(vis2[i].data) for i in 1:len]...)
         return statistic(resid)
     end
@@ -189,11 +189,11 @@ function randsfit(
     for i in eachindex(lengths)
         splits[i+1] = splits[i] + lengths[i]
     end
-    uv = extract_uv.(vis2)
+    _uv = uv.(vis2)
     function cmpfit_callback(param::Vector{Float64})
         resid = vcat([(
             Measurements.value(vis2[i].data) -
-            model(uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
+            model(_uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
         ) ./ Measurements.uncertainty(vis2[i].data) for i in 1:len]...)
         return statistic(resid)
     end
@@ -236,9 +236,12 @@ function bootfit(
     c = fill(NaN, 9, straps)
     for strap in 1:straps
         vis2m = vis2[rand(sp, len)]
-        uv = extract_uv.(vis2m)
+        _uv = uv.(vis2m)
         function cmpfit_callback(param::Vector{Float64})
-            resid = vcat([(vis2m[i].data - model(uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2) ./ vis2m[i].err for i in 1:len]...)
+            resid = vcat([(
+                Measurements.values.(vis2m[i].data) -
+                model(_uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
+            ) ./ Measurements.uncertainty.(vis2m[i].data) for i in 1:len]...)
             return statistic(resid)
         end
         function makefit()
