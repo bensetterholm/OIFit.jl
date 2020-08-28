@@ -9,6 +9,7 @@ using CMPFit
 using Measurements
 using OIFITS
 using Random
+using SpecialFunctions
 using Statistics
 
 include("data.jl")
