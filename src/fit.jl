@@ -42,11 +42,17 @@ function fit(
     model::Function;
     statistic::Function = l1norm,
     set_flux = 0,
+    guess = nothing,
     parinfo = nothing,
     config = nothing,
 )
     _uv = uv(vis2)
-    guessParam = [45., 131.3, 3., 0.5, 0.5]
+    guessParam = if isnothing(guess)
+        [45., 131.3, 3., 0.5, 0.5]
+    else
+        length(guess) ≠ 5 && error("`guess` should have 5 parameters")
+        guess
+    end
     parinfo = CMPFit.Parinfo(5)
     parinfo[4].limited = (1, 1)
     parinfo[4].limits = (0, 1) # disk model flux
@@ -65,6 +71,7 @@ function fit(
     model::Function;
     statistic::Function = l1norm,
     set_flux = 0,
+    guess = nothing,
     parinfo = nothing,
     config = nothing,
 )
@@ -75,7 +82,13 @@ function fit(
         splits[i+1] = splits[i] + lengths[i]
     end
     _uv = uv.(vis2)
-    guessParam = [45., 131.3, fill(0.5, 3*len)...]
+    guessParam = if isnothing(guess)
+        [45., 131.3, fill(0.5, 3*len)...]
+    else
+        s = 2 + 3 * len
+        length(guess) ≠ s && error("`guess` should have $s parameters")
+        guess
+    end
     parinfo = CMPFit.Parinfo(length(guessParam))
     for i in 0:len-1
         guessParam[3+(3*i)] = 3.0
