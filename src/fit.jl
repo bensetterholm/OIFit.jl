@@ -38,35 +38,6 @@ function makesensible(param::Vector{Float64})
 end
 
 function fit(
-    vis2::Vis2,
-    model::Function;
-    statistic::Function = l1norm,
-    set_flux = 0,
-    guess = nothing,
-    parinfo = nothing,
-    config = nothing,
-)
-    _uv = uv(vis2)
-    guessParam = if isnothing(guess)
-        [45., 131.3, 3., 0.5, 0.5]
-    else
-        length(guess) ≠ 5 && error("`guess` should have 5 parameters")
-        guess
-    end
-    parinfo = CMPFit.Parinfo(5)
-    parinfo[4].limited = (1, 1)
-    parinfo[4].limits = (0, 1) # disk model flux
-    parinfo[5].limited = (1, 1)
-    parinfo[5].limits = (0, 1) # point source flux
-    function cmpfit_callback(param::Vector{Float64})
-        resid = (Measurements.value.(vis2.data) - model(_uv, param...).^2) ./
-            Measurements.uncertainty.(vis2.data)
-        return statistic(resid)
-    end
-    cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
-end
-
-function fit(
     vis2::Vector{Vis2},
     model::Function;
     statistic::Function = l1norm,
@@ -74,6 +45,7 @@ function fit(
     guess = nothing,
     parinfo = nothing,
     config = nothing,
+    ritr = 0,
 )
     lengths = length.(vis2)
     len = length(lengths)
@@ -99,132 +71,54 @@ function fit(
     end
     function cmpfit_callback(param::Vector{Float64})
         resid = vcat([(
-            Measurement.value.(vis2[i].data) -
-            model(_uv[i], param[1], param[2], param[3*i], param[3*i+1], param[3*i+2]).^2
-        ) ./ Measurement.uncertainty.(vis2[i].data) for i in 1:len]...)
-        return statistic(resid)
-    end
-    cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
-end
-
-function sensiblefit(vis2::Union{Vis2, Vector{Vis2}}, model::Function; kwargs...)
-    a = fit(vis2, model, kwargs...)
-    makesensible(a.param)
-    return a
-end
-
-function sizefit(
-    vis2::Vector{Vis2},
-    model::Function;
-    statistic::Function = l1norm,
-    set_flux = 0,
-    parinfo = nothing,
-    config = nothing,
-)
-    lengths = length.(vis2)
-    len = length(lengths)
-    splits = zeros(Int64, len+1)
-    for i in eachindex(lengths)
-        splits[i+1] = splits[i] + lengths[i]
-    end
-    _uv = uv.(vis2)
-    guessParam = [10., 10., 3.0, fill(0.5, 2*len)...]
-    parinfo = CMPFit.Parinfo(length(guessParam))
-    for i in 0:len-1
-        parinfo[4+(2*i)].limited = (1, 1)
-        parinfo[4+(2*i)].limits = (0, 1)
-        parinfo[5+(2*i)].limited = (1, 1)
-        parinfo[5+(2*i)].limits = (0, 1)
-    end
-    function cmpfit_callback(param::Vector{Float64})
-        resid = vcat([(
-            Measurements.value.(vis2[i].data) -
-            model(_uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
-        ) ./ Measurements.uncertainty.(vis2[i].data) for i in 1:len]...)
-        return statistic(resid)
-    end
-    cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
-end
-
-function randfit(
-    vis2::Vector{Vis2},
-    model::Function;
-    statistic::Function = l1norm,
-    set_flux = 0,
-    parinfo = nothing,
-    config = nothing,
-    itr = 10,
-)
-    lengths = length.(vis2)
-    len = length(lengths)
-    splits = zeros(Int64, len+1)
-    for i in eachindex(lengths)
-        splits[i+1] = splits[i] + lengths[i]
-    end
-    _uv = uv.(vis2)
-    function cmpfit_callback(param::Vector{Float64})
-        resid = vcat([(
             Measurements.value.(vis2[i].data) -
             model(_uv[i], param[1], param[2], param[3*i], param[3*i+1], param[3*i+2]).^2
         ) ./ Measurements.uncertainty.(vis2[i].data) for i in 1:len]...)
         return statistic(resid)
     end
-    function makefit()
-        guessParam = [90., 180., fill(1.0, 3*len)...] .* rand(3*len+2)
-        parinfo = CMPFit.Parinfo(length(guessParam))
-        for i in 0:len-1
-            guessParam[3+(3*i)] *= 6.0
-            parinfo[4+(3*i)].limited = (1, 1)
-            parinfo[4+(3*i)].limits = (0, 1)
-            parinfo[5+(3*i)].limited = (1, 1)
-            parinfo[5+(3*i)].limits = (0, 1)
+    b = if ritr > 0
+        function makefit()
+            guessParam = [90., 180., fill(1.0, 3*len)...] .* rand(3*len+2)
+            parinfo = CMPFit.Parinfo(length(guessParam))
+            for i in 0:len-1
+                guessParam[3+(3*i)] *= 6.0
+                parinfo[4+(3*i)].limited = (1, 1)
+                parinfo[4+(3*i)].limits = (0, 1)
+                parinfo[5+(3*i)].limited = (1, 1)
+                parinfo[5+(3*i)].limits = (0, 1)
+            end
+            return cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
         end
-        return cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
+        a = [makefit() for i in 1:ritr]
+        a[argmin([a[i].bestnorm for i in 1:ritr])]
+        
+    else
+        cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
     end
-    a = [makefit() for i in 1:itr]
-    b = a[argmin([a[i].bestnorm for i in 1:itr])]
     makesensible(b.param)
     return b
 end
 
-function randsfit(
-    vis2::Vector{Vis2},
+function fit(
+    vis2::Vis2,
     model::Function;
     statistic::Function = l1norm,
     set_flux = 0,
+    guess = nothing,
     parinfo = nothing,
     config = nothing,
-    itr = 10,
+    ritr = 0,
 )
-    lengths = length.(vis2)
-    len = length(lengths)
-    splits = zeros(Int64, len+1)
-    for i in eachindex(lengths)
-        splits[i+1] = splits[i] + lengths[i]
-    end
-    _uv = uv.(vis2)
-    function cmpfit_callback(param::Vector{Float64})
-        resid = vcat([(
-            Measurements.value(vis2[i].data) -
-            model(_uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
-        ) ./ Measurements.uncertainty(vis2[i].data) for i in 1:len]...)
-        return statistic(resid)
-    end
-    function makefit()
-        guessParam = [90., 180., 6.0, fill(1.0, 2*len)...] .* rand(2*len+3)
-        parinfo = CMPFit.Parinfo(length(guessParam))
-        for i in 0:len-1
-            parinfo[4+(2*i)].limited = (1, 1)
-            parinfo[4+(2*i)].limits = (0, 1)
-            parinfo[5+(2*i)].limited = (1, 1)
-            parinfo[5+(2*i)].limits = (0, 1)
-        end
-        return cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
-    end
-    a = [makefit() for i in 1:itr]
-    b = a[argmin([a[i].bestnorm for i in 1:itr])]
-    makesensible(b.param)
-    return b
+    fit(
+        [vis2],
+        model;
+        statistic = statistic,
+        set_flux = set_flux,
+        guess = guess,
+        parinfo = parinfo,
+        config = config,
+        ritr = ritr,
+    )
 end
 
 function bootfit(
@@ -252,7 +146,7 @@ function bootfit(
         _uv = uv.(vis2m)
         function cmpfit_callback(param::Vector{Float64})
             resid = vcat([(
-                Measurements.values.(vis2m[i].data) -
+                Measurements.value.(vis2m[i].data) -
                 model(_uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
             ) ./ Measurements.uncertainty.(vis2m[i].data) for i in 1:len]...)
             return statistic(resid)
