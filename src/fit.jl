@@ -121,7 +121,7 @@ function fit(
 end
 
 function bootfit(
-    vis2::Vector{Vis2},
+    vis2::Union{Vis2, Vector{Vis2}},
     model::Function;
     statistic::Function = l1norm,
     set_flux = 0,
@@ -131,43 +131,24 @@ function bootfit(
     straps = 10,
 )
     t0 = time()
-    lengths = length.(vis2)
-    len = length(lengths)
-    splits = zeros(Int64, len+1)
-    for i in eachindex(lengths)
-        splits[i+1] = splits[i] + lengths[i]
-    end
-
-    sp = Random.Sampler(Random.MersenneTwister, 1:len)
-    c = fill(NaN, 9, straps)
+    _vis2 = vis2 isa Vis2 ? [vis2] : vis2
+    len = length(_vis2)
+    sp = [Random.Sampler(Random.MersenneTwister, 1:length(v)) for v in _vis2]
+    params = fill(NaN, 3*len+2, straps)
     for strap in 1:straps
-        vis2m = vis2[rand(sp, len)]
-        _uv = uv.(vis2m)
-        function cmpfit_callback(param::Vector{Float64})
-            resid = vcat([(
-                Measurements.value.(vis2m[i].data) -
-                model(_uv[i], param[1], param[2], param[3], param[2*i+2], param[2*i+3]).^2
-            ) ./ Measurements.uncertainty.(vis2m[i].data) for i in 1:len]...)
-            return statistic(resid)
-        end
-        function makefit()
-            guessParam = [90, 180, vcat(fill([6, 1, 1], len)...)...] .* rand(3*len+2)
-            parinfo = CMPFit.Parinfo(length(guessParam))
-            for i in 0:len-1
-                parinfo[4+(2*i)].limited = (1, 1)
-                parinfo[4+(2*i)].limits = (0, 1)
-                parinfo[5+(2*i)].limited = (1, 1)
-                parinfo[5+(2*i)].limits = (0, 1)
-            end
-            return cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
-        end
-        a = [makefit() for i in 1:ritr]
-        b = a[argmin([a[i].bestnorm for i in 1:ritr])]
-        makesensible!(b.param)
-        c[:,strap] = b.param
+        params[:, strap] .= fit(
+            [_vis2[i][rand(sp[i], length(_vis2[i]))] for i in eachindex(_vis2)],
+            model;
+            statistic=statistic,
+            set_flux=set_flux,
+            parinfo=parinfo,
+            config=config,
+            ritr=ritr,
+        ).param
+        makesensible!(params[:, strap])
     end
-    ret = randsfit(
-        vis2,
+    ret = fit(
+        _vis2,
         model,
         statistic = statistic,
         set_flux = set_flux,
@@ -175,8 +156,8 @@ function bootfit(
         config = config,
         ritr = ritr*10
     )
-    ret.perror = [std(c[i,:]) for i in 1:size(c)[1]]
-    ret.covar = collect(transpose(c))
+    ret.perror = [std(params[i,:]) for i in 1:size(params)[1]]
+    ret.covar = collect(transpose(params))
     ret.elapsed = time() - t0
     return ret
 end
