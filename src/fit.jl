@@ -78,7 +78,7 @@ function fit(
     end
     b = if ritr > 0
         function makefit()
-            guessParam = [90., 180., fill(1.0, 3*len)...] .* rand(3*len+2)
+            guessParam = [90, 180, vcat(fill([6, 1, 1], len)...)...] .* rand(3*len+2)
             parinfo = CMPFit.Parinfo(length(guessParam))
             for i in 0:len-1
                 guessParam[3+(3*i)] *= 6.0
@@ -151,7 +151,7 @@ function bootfit(
             return statistic(resid)
         end
         function makefit()
-            guessParam = [90., 180., 6.0, fill(1.0, 2*len)...] .* rand(2*len+3)
+            guessParam = [90, 180, vcat(fill([6, 1, 1], len)...)...] .* rand(3*len+2)
             parinfo = CMPFit.Parinfo(length(guessParam))
             for i in 0:len-1
                 parinfo[4+(2*i)].limited = (1, 1)
