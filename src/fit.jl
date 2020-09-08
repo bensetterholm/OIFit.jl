@@ -22,7 +22,7 @@ function saturate(resid)
     return [abs(r) < sp ? r : sp * sign(r) for r in resid]
 end
 
-function makesensible(param::Vector{Float64})
+function makesensible!(param::Vector{Float64})
     param[1] = (param[1] + 90) % 180
     if param[1] < 0
         param[1] += 180
@@ -94,7 +94,7 @@ function fit(
     else
         cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
     end
-    makesensible(b.param)
+    makesensible!(b.param)
     return b
 end
 
@@ -163,7 +163,7 @@ function bootfit(
         end
         a = [makefit() for i in 1:ritr]
         b = a[argmin([a[i].bestnorm for i in 1:ritr])]
-        makesensible(b.param)
+        makesensible!(b.param)
         c[:,strap] = b.param
     end
     ret = randsfit(
