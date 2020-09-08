@@ -24,10 +24,18 @@ struct Vis2
     ) where T<:Real
         return Vis2(λ .± (0.5 .* λerr), data .± err, u, v)
     end
+
+    function Vis2(λ::Measurement{T}, data::Measurement{T}, u::T, v::T) where T<:Real
+        return Vis2(λ, [data], [u], [v])
+    end
 end
 
 function ==(a::Vis2, b::Vis2)
     return a.λ == b.λ && a.data == b.data && a.u == b.u && a.v == b.v
+end
+
+function getindex(a::Vis2, @nospecialize vals)
+    return Vis2(a.λ, a.data[vals], a.u[vals], a.v[vals])
 end
 
 function length(meas::Vis2)

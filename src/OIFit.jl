@@ -1,9 +1,9 @@
 module OIFit
 
-export +, ==, length, Vis2
+export +, ==, getindex, length, Vis2
 export annulus, disk, gauss, pseudolorentzian
 
-import Base: +, ==, length, merge
+import Base: +, ==, getindex, length, merge
 
 using CMPFit
 using Measurements
