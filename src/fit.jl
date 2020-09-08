@@ -91,7 +91,6 @@ function fit(
         end
         a = [makefit() for i in 1:ritr]
         a[argmin([a[i].bestnorm for i in 1:ritr])]
-        
     else
         cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
     end
@@ -128,7 +127,7 @@ function bootfit(
     set_flux = 0,
     parinfo = nothing,
     config = nothing,
-    itr = 10,
+    ritr = 10,
     straps = 10,
 )
     t0 = time()
@@ -162,8 +161,8 @@ function bootfit(
             end
             return cmpfit(cmpfit_callback, guessParam, parinfo=parinfo, config=config)
         end
-        a = [makefit() for i in 1:itr]
-        b = a[argmin([a[i].bestnorm for i in 1:itr])]
+        a = [makefit() for i in 1:ritr]
+        b = a[argmin([a[i].bestnorm for i in 1:ritr])]
         makesensible(b.param)
         c[:,strap] = b.param
     end
@@ -174,7 +173,7 @@ function bootfit(
         set_flux = set_flux,
         parinfo = parinfo,
         config = config,
-        itr = itr*10
+        ritr = ritr*10
     )
     ret.perror = [std(c[i,:]) for i in 1:size(c)[1]]
     ret.covar = collect(transpose(c))
